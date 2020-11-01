@@ -45,44 +45,8 @@
  * limitations under the License.
  */
 #include "hitsic_common.h"
-
-/** HITSIC_Module_DRV */
-#include "drv_ftfx_flash.hpp"
-#include "drv_disp_ssd1306.hpp"
-#include "drv_imu_invensense.hpp"
-#include "drv_dmadvp.hpp"
-#include "drv_cam_zf9v034.hpp"
-
-/** HITSIC_Module_SYS */
-#include "sys_pitmgr.hpp"
-#include "sys_extint.hpp"
-#include "sys_uartmgr.hpp"
 #include "cm_backtrace.h"
-//#include "easyflash.h"
 
-/** HITSIC_Module_APP */
-#include "app_menu.hpp"
-#include "app_svbmp.hpp"
-
-/** FATFS */
-#include "ff.h"
-#include "sdmmc_config.h"
-FATFS fatfs;                                   //逻辑驱动器的工作区
-
-#include "sc_adc.h"
-#include "sc_ftm.h"
-
-/** HITSIC_Module_TEST */
-#include "drv_cam_zf9v034_test.hpp"
-#include "app_menu_test.hpp"
-#include "drv_imu_invensense_test.hpp"
-#include "sys_fatfs_test.hpp"
-#include "sys_fatfs_diskioTest.hpp"
-
-/** SCLIB_TEST */
-#include "sc_test.hpp"
-
-uartMgr_t *uartMgr0 = nullptr;
 
 void main(void)
 {
@@ -108,54 +72,11 @@ void main(void)
     cm_backtrace_init("HITSIC_MK66F18", "v1.1rc", "v1.0a");
     PRINTF("Welcome to HITSIC !\n");
     PRINTF("gcc version: %d.%d.%d\n", __GNUC__, __GNUC_MINOR__, __GNUC_PATCHLEVEL__);
-    /** 初始化ftfx_Flash */
-    FLASH_SimpleInit();
-    /** 初始化EasyFlash */
-    //easyflash_init();
-    /** 初始化PIT中断管理器 */
-    pitMgr_t::init();
-    /** 初始化I/O中断管理器 */
-    extInt_t::init();
-
-    /** 初始化串口管理器 */
-    uartMgr0 = &uartMgr_t::getInst(UART0);
-    uartMgr0->uprintf("Wi-Fi Test!\n");
-    /** 初始化OLED屏幕 */
-    DISP_SSD1306_Init();
-
-    /** 初始化菜单 */
-    MENU_Init();
-    MENU_Data_NvmReadRegionConfig();
-    MENU_Data_NvmRead(menu_currRegionNum);
-    MENU_Suspend();
-
-    extern const uint8_t DISP_image_100thAnniversary[8][128];
-    DISP_SSD1306_BufferUpload((uint8_t*) DISP_image_100thAnniversary);
-    SDK_DelayAtLeastUs(1000 * 1000, CLOCK_GetFreq(kCLOCK_CoreSysClk));
-    /** 初始化摄像头 */
-
-    /** 初始化IMU */
 
     /** 初始化结束，开启总中断 */
     HAL_ExitCritical();
 
-    FATFS_BasicTest();
-    SDK_DelayAtLeastUs(1000 * 1000, CLOCK_GetFreq(kCLOCK_CoreSysClk));
-    CAM_ZF9V034_UnitTest();
-    SDK_DelayAtLeastUs(1000 * 1000, CLOCK_GetFreq(kCLOCK_CoreSysClk));
-
-
-    inv::IMU_UnitTest_AutoRefresh();
-    sc::SC_UnitTest_AutoRefresh();
-
-    MENU_Resume();
-
     float f = arm_sin_f32(0.6f);
-
-    uint8_t duty = 0;
-    uint8_t adc0, adc1, adc2, adc3, adc4, adc5, adc6, adc7;
-    int speed1, speed2;
-    uint8_t sw1_state = GPIO_PinRead(GPIOA, 9U);
 
     while (true)
     {
@@ -163,10 +84,3 @@ void main(void)
     }
 }
 
-void MENU_DataSetUp(void)
-{
-    MENU_ListInsert(menu_menuRoot, MENU_ItemConstruct(nullType, NULL, "TEST", 0, 0));
-    inv::IMU_UnitTest_AutoRefreshAddMenu(menu_menuRoot);
-    sc::SC_UnitTest_AutoRefreshAddMenu(menu_menuRoot);
-    MENU_DataSetupTest(menu_menuRoot);
-}
