@@ -47,23 +47,23 @@
 #include "hitsic_common.h"
 #include "cm_backtrace.h"
 
-/** 五向按键 确认键 PTE10 */
+/** 核心板LED 按需更改 */
 #define EXAMPLE_GPIO    GPIOE
 #define EXAMPLE_PORT    PORTE
 #define EXAMPLE_PIN     10U
 
 const gpio_pin_config_t example_gpioCfg =
 {
-    .pinDirection = kGPIO_DigitalInput,
+    .pinDirection = kGPIO_DigitalOutput,
     .outputLogic = 0U,
 };
 
 const port_pin_config_t example_portCfg =
 {
-    .pullSelect = kPORT_PullUp,
+    .pullSelect = kPORT_PullDisable,
     .slewRate = kPORT_FastSlewRate,
     .passiveFilterEnable = kPORT_PassiveFilterDisable,
-    .openDrainEnable = kPORT_OpenDrainEnable,
+    .openDrainEnable = kPORT_OpenDrainDisable,
     .driveStrength = kPORT_HighDriveStrength,
     .mux = kPORT_MuxAsGpio,
     .lockRegister = kPORT_UnlockRegister,
@@ -105,8 +105,29 @@ void main(void)
 
     while (true)
     {
-        PRINTF("pin state: %1.1d\n", GPIO_PinRead(EXAMPLE_GPIO, EXAMPLE_PIN));
+        /**
+         * @note: Group 1
+         *      练习使用GPIO_PinWrite
+         * @ {
+         */
+        GPIO_PinWrite(EXAMPLE_GPIO, EXAMPLE_PIN, 0U);
         SDK_DelayAtLeastUs(1000 * 1000, CLOCK_GetFreq(kCLOCK_CoreSysClk));
+        GPIO_PinWrite(EXAMPLE_GPIO, EXAMPLE_PIN, 1U);
+        SDK_DelayAtLeastUs(1000 * 1000, CLOCK_GetFreq(kCLOCK_CoreSysClk));
+        /**
+         * @ }
+         */
+
+        /**
+         * @note: Group 2
+         *      练习使用GPIO_PortToggle
+         * @ {
+         */
+        //GPIO_PortToggle(EXAMPLE_GPIO, 1U << EXAMPLE_PIN);
+        //SDK_DelayAtLeastUs(1000 * 1000, CLOCK_GetFreq(kCLOCK_CoreSysClk));
+        /**
+         * @ }
+         */
     }
 }
 
