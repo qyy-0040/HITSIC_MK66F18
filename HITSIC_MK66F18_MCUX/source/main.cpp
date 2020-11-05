@@ -47,6 +47,28 @@
 #include "hitsic_common.h"
 #include "cm_backtrace.h"
 
+/** 五向按键 确认键 PTE10 */
+#define EXAMPLE_GPIO    GPIOE
+#define EXAMPLE_PORT    PORTE
+#define EXAMPLE_PIN     10U
+
+const gpio_pin_config_t example_gpioCfg =
+{
+    .pinDirection = kGPIO_DigitalInput,
+    .outputLogic = 0U,
+};
+
+const port_pin_config_t example_portCfg =
+{
+    .pullSelect = kPORT_PullUp,
+    .slewRate = kPORT_FastSlewRate,
+    .passiveFilterEnable = kPORT_PassiveFilterDisable,
+    .openDrainEnable = kPORT_OpenDrainEnable,
+    .driveStrength = kPORT_HighDriveStrength,
+    .mux = kPORT_MuxAsGpio,
+    .lockRegister = kPORT_UnlockRegister,
+};
+
 
 void main(void)
 {
@@ -73,6 +95,9 @@ void main(void)
     PRINTF("Welcome to HITSIC !\n");
     PRINTF("gcc version: %d.%d.%d\n", __GNUC__, __GNUC_MINOR__, __GNUC_PATCHLEVEL__);
 
+    PORT_SetPinConfig(EXAMPLE_PORT, EXAMPLE_PIN, &example_portCfg);
+    GPIO_PinInit(EXAMPLE_GPIO, EXAMPLE_PIN, &example_gpioCfg);
+
     /** 初始化结束，开启总中断 */
     HAL_ExitCritical();
 
@@ -80,7 +105,8 @@ void main(void)
 
     while (true)
     {
-
+        PRINTF("pin state: %1.1d\n", GPIO_PinRead(EXAMPLE_GPIO, EXAMPLE_PIN));
+        SDK_DelayAtLeastUs(1000 * 1000, CLOCK_GetFreq(kCLOCK_CoreSysClk));
     }
 }
 
