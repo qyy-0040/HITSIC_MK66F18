@@ -70,6 +70,21 @@ const port_pin_config_t example_portCfg =
 };
 
 
+void TEST_PIT_Init(void)
+{
+    pit_config_t cfg;
+    {
+        cfg.enableRunInDebug = true;
+    }
+    PIT_Init(PIT, &cfg);
+    PIT_SetTimerPeriod(PIT, kPIT_Chnl_2, USEC_TO_COUNT(1000, 60000000));
+    PIT_EnableInterrupts(PIT, kPIT_Chnl_2, kPIT_TimerInterruptEnable);
+    NVIC_SetPriority(PIT2_IRQn, 2);
+    EnableIRQ(PIT2_IRQn);
+    PIT_StartTimer(PIT, kPIT_Chnl_2);
+}
+
+
 void main(void)
 {
     /** 初始化阶段，关闭总中断 */
@@ -94,6 +109,8 @@ void main(void)
     cm_backtrace_init("HITSIC_MK66F18", "v1.1rc", "v1.0a");
     PRINTF("Welcome to HITSIC !\n");
     PRINTF("gcc version: %d.%d.%d\n", __GNUC__, __GNUC_MINOR__, __GNUC_PATCHLEVEL__);
+
+    TEST_PIT_Init();
 
     PORT_SetPinConfig(EXAMPLE_PORT, EXAMPLE_PIN, &example_portCfg);
     GPIO_PinInit(EXAMPLE_GPIO, EXAMPLE_PIN, &example_gpioCfg);
@@ -122,12 +139,40 @@ void main(void)
          * @note: Group 2
          *      练习使用GPIO_PortToggle
          * @ {
-         */
-        //GPIO_PortToggle(EXAMPLE_GPIO, 1U << EXAMPLE_PIN);
-        //SDK_DelayAtLeastUs(1000 * 1000, CLOCK_GetFreq(kCLOCK_CoreSysClk));
+         */\
+        GPIO_PortToggle(EXAMPLE_GPIO, 1U << EXAMPLE_PIN);
+        SDK_DelayAtLeastUs(1000 * 1000, CLOCK_GetFreq(kCLOCK_CoreSysClk));
         /**
          * @ }
          */
     }
 }
+
+#ifdef __cplusplus
+extern "C"{
+#endif
+
+
+
+uint32_t test_time_ms = 0U;
+
+void PIT2_IRQHandler(void)
+{
+    PIT_ClearStatusFlags(PIT, kPIT_Chnl_2, kPIT_TimerFlag);
+    if(test_time_ms % 500 == 0U)
+    {
+        PRINTF("500ms!\n");
+    }
+    if(test_time_ms % 2000 == 3U)
+    {
+        PRINTF("2000ms!\n");
+    }
+    ++test_time_ms;
+}
+
+#ifdef __cplusplus
+}
+#endif
+
+
 
