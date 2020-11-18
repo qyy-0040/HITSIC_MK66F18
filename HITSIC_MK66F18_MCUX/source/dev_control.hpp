@@ -10,11 +10,13 @@
 
 #include "app_menu.hpp"
 #include "sc_ftm.h"
+#include "drv_disp_ssd1306_port.hpp"
 
 #include "dev_Image.h"
 
 #define CTRL_SPD_CTRL_MS    (5U)
 #define CTRL_DIR_CTRL_MS    (20U)
+#define CTRL_START_MS    (3000U)
 
 #define CTRL_1G             (9.80f)
 //#define CTRL_ASIN(x)        (arm_arcsin_f32(x))
@@ -31,9 +33,12 @@ extern inv::mpu6050_t imu_6050;
 
 void CTRL_Init(void);
 
-
-
 void CTRL_MenuInit(menu_list_t *menuList);
+
+/* ******************** 启动延时 ******************** */
+void CTRL_Start(void);
+
+/* *********************************************** */
 
 /* ******************** 速度环 ******************** */
 extern int32_t ctrl_spdCtrlEn[3];

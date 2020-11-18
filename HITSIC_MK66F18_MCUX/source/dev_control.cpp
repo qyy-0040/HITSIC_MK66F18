@@ -7,9 +7,9 @@ pitMgr_t* ctrl_dirCtrlHandle = nullptr;
 /**控制环初始化**/
 void CTRL_Init(void)
 {
-    ctrl_dirCtrlHandle = pitMgr_t::insert(CTRL_DIR_CTRL_MS, 2U, CTRL_DirCtrl, pitMgr_t::enable);
+    ctrl_dirCtrlHandle = pitMgr_t::insert(CTRL_DIR_CTRL_MS, 3U, CTRL_DirCtrl, pitMgr_t::enable);
     assert(ctrl_dirCtrlHandle);
-    ctrl_spdCtrlHandle = pitMgr_t::insert(CTRL_SPD_CTRL_MS, 3U, CTRL_SpdCtrl, pitMgr_t::enable);
+    ctrl_spdCtrlHandle = pitMgr_t::insert(CTRL_SPD_CTRL_MS, 4U, CTRL_SpdCtrl, pitMgr_t::enable);
     assert(ctrl_spdCtrlHandle);
 }
 
@@ -17,8 +17,11 @@ void CTRL_Init(void)
 extern uint32_t threshold; //阈值
 extern uint32_t preview ;  //前瞻
 extern float img_error;
+
+/**全局变量声明**/
 float ctrl_motorL = 0.0f, ctrl_motorR = 0.0f;
 float ctrl_sevromid;            ///<舵机中值
+bool ctrl_startstaus = false;
 
 /**菜单项初始化**/
 void CTRL_MenuInit(menu_list_t *menuList)
@@ -31,6 +34,8 @@ void CTRL_MenuInit(menu_list_t *menuList)
     {
         MENU_ListInsert(ctrlMenuList, MENU_ItemConstruct(nullType, NULL, "ENB", 0, 0));
 
+        MENU_ListInsert(ctrlMenuList, MENU_ItemConstruct(procType, CTRL_Start, "start", 0U,
+                menuItem_proc_runOnce));
         MENU_ListInsert(ctrlMenuList, MENU_ItemConstruct(variType, &ctrl_spdCtrlEn[0], "spd.en", 0U,
                 menuItem_data_NoSave | menuItem_data_NoLoad | menuItem_dataExt_HasMinMax));
         MENU_ListInsert(ctrlMenuList, MENU_ItemConstruct(variType, &ctrl_dirCtrlEn[0], "dir.en", 0U,
@@ -51,7 +56,7 @@ void CTRL_MenuInit(menu_list_t *menuList)
         MENU_ListInsert(ctrlMenuList, MENU_ItemConstruct(varfType, &ctrl_spdPid.kd, "spd.kd", 15U,
                 menuItem_data_region));
         MENU_ListInsert(ctrlMenuList, MENU_ItemConstruct(varfType, &ctrl_spdPidOutput, "spd.out", 0U,
-                menuItem_data_NoSave | menuItem_data_NoLoad));*/
+                menuItem_data_NoSave | menuItem_data_NoLoad));速度闭环后启用*/
 
         MENU_ListInsert(ctrlMenuList, MENU_ItemConstruct(nullType, NULL, "DIR", 0, 0));
 
@@ -64,7 +69,7 @@ void CTRL_MenuInit(menu_list_t *menuList)
         MENU_ListInsert(ctrlMenuList, MENU_ItemConstruct(varfType, &ctrl_dirPid.kd, "dir.kd", 23U,
                 menuItem_data_region));
         MENU_ListInsert(ctrlMenuList, MENU_ItemConstruct(varfType, &ctrl_dirPidOutput, "dir.out", 0U,
-                menuItem_data_NoSave | menuItem_data_NoLoad));
+                menuItem_data_NoSave | menuItem_data_NoLoad|menuItem_data_ROFlag));
     }
 
     static menu_list_t *imageMenuList =
@@ -77,7 +82,7 @@ void CTRL_MenuInit(menu_list_t *menuList)
         MENU_ListInsert(imageMenuList, MENU_ItemConstruct(variType, &preview, "preview", 26U,
                 menuItem_data_global));
         MENU_ListInsert(imageMenuList, MENU_ItemConstruct(varfType, &img_error, "img_error", 0U,
-                menuItem_data_NoSave | menuItem_data_NoLoad));
+                menuItem_data_NoSave | menuItem_data_NoLoad|menuItem_data_ROFlag));
     }
     static menu_list_t *paraMenuList =
                 MENU_ListConstruct("Parameter", 10, menuList);
@@ -85,12 +90,20 @@ void CTRL_MenuInit(menu_list_t *menuList)
     MENU_ListInsert(menuList, MENU_ItemConstruct(menuType, paraMenuList, "Parameter", 0, 0));
     {
         MENU_ListInsert(paraMenuList, MENU_ItemConstruct(varfType, &ctrl_dirPidOutput, "dir.out", 0U,
-                menuItem_data_NoSave | menuItem_data_NoLoad));
+                menuItem_data_NoSave | menuItem_data_NoLoad|menuItem_data_ROFlag));
         MENU_ListInsert(paraMenuList, MENU_ItemConstruct(varfType, &img_error, "img_error", 0U,
-                menuItem_data_NoSave | menuItem_data_NoLoad));
+                menuItem_data_NoSave | menuItem_data_NoLoad|menuItem_data_ROFlag));
     }
 }
 
+/* ******************** 启动延时 ******************** */
+void CTRL_Start(void)
+{
+    DISP_SSD1306_delay_ms(2500);
+    ctrl_startstaus = !ctrl_startstaus;
+}
+
+/* *********************************************** */
 
 /* ******************** 速度环 ******************** */
 int32_t ctrl_spdCtrlEn[3] = {0, 0, 1}; ///< 速度环使能
@@ -115,7 +128,7 @@ void CTRL_SpdCtrl(void *userData)
     //ctrl_spdR = ((float)SCFTM_GetSpeed(ENCO_R_PERIPHERAL)) * CTRL_ENCO_SPD_COEFF;
     //SCFTM_ClearSpeed(ENCO_R_PERIPHERAL);
     //ctrl_spdAvg = (ctrl_spdL + ctrl_spdR) / 2.0f;
-    if(1 == ctrl_spdCtrlEn[0])
+    if(1 == ctrl_spdCtrlEn[0] && ctrl_startstaus)
     {
         //PIDCTRL_ErrUpdate(&ctrl_spdPid, ctrl_spdAvg - ctrl_spdSet);
         //ctrl_spdPidOutput = PIDCTRL_CalcPIDGain(&ctrl_spdPid);
@@ -143,7 +156,7 @@ float ctrl_dirPidOutput = 0.0f; ///< 转向环输出
 
 void CTRL_DirCtrl(void *userData)
 {
-    if(1 == ctrl_dirCtrlEn[0])
+    if(1 == ctrl_dirCtrlEn[0] && ctrl_startstaus)
     {
         PIDCTRL_ErrUpdate(&ctrl_dirPid, (img_error));
         ctrl_dirPidOutput = ctrl_sevromid + PIDCTRL_CalcPIDGain(&ctrl_dirPid);
