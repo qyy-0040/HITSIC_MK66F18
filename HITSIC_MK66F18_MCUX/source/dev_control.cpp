@@ -99,8 +99,15 @@ void CTRL_MenuInit(menu_list_t *menuList)
 /* ******************** 启动延时 ******************** */
 void CTRL_Start(void)
 {
-    DISP_SSD1306_delay_ms(2500);
-    ctrl_startstaus = !ctrl_startstaus;
+    if(ctrl_startstaus == false)
+    {
+        DISP_SSD1306_delay_ms(1500);
+        ctrl_startstaus = !ctrl_startstaus;
+    }
+    else
+    {
+        ctrl_startstaus = !ctrl_startstaus;
+    }
 }
 
 /* *********************************************** */

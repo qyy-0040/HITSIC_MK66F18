@@ -99,7 +99,6 @@ void main(void)
 {
     /** 初始化阶段，关闭总中断 */
     HAL_EnterCritical();
-
     /** BSP（板级支持包）初始化 */
     RTECLK_HsRun_180MHz();
     RTEPIN_Basic();
