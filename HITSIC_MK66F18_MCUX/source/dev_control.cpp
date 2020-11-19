@@ -3,6 +3,7 @@
 /**控制环PITMGR任务句柄**/
 pitMgr_t* ctrl_spdCtrlHandle = nullptr;
 pitMgr_t* ctrl_dirCtrlHandle = nullptr;
+pitMgr_t* ctrl_emCtrlHandle = nullptr;
 
 /**控制环初始化**/
 void CTRL_Init(void)
@@ -11,17 +12,23 @@ void CTRL_Init(void)
     assert(ctrl_dirCtrlHandle);
     ctrl_spdCtrlHandle = pitMgr_t::insert(CTRL_SPD_CTRL_MS, 4U, CTRL_SpdCtrl, pitMgr_t::enable);
     assert(ctrl_spdCtrlHandle);
+    ctrl_emCtrlHandle = pitMgr_t::insert(CTRL_EM_CTRL_MS, 5U, EM_ErrorUpdate, pitMgr_t::enable);
+    assert(ctrl_emCtrlHandle);
 }
 
 /**外部变量引用**/
 extern uint32_t threshold; //阈值
 extern uint32_t preview ;  //前瞻
 extern float img_error;
+extern float em_error;
+extern float AD[ChannelTimes];
 
 /**全局变量声明**/
 float ctrl_motorL = 0.0f, ctrl_motorR = 0.0f;
 float ctrl_sevromid;            ///<舵机中值
 bool ctrl_startstaus = false;
+int32_t ctrl_ImgEn[3] = {0, 0, 1};
+int32_t ctrl_EmEn[3] = {0, 0, 1};
 
 /**菜单项初始化**/
 void CTRL_MenuInit(menu_list_t *menuList)
@@ -30,12 +37,15 @@ void CTRL_MenuInit(menu_list_t *menuList)
             MENU_ListConstruct("Control", 32, menuList);
     assert(ctrlMenuList);
     MENU_ListInsert(menuList, MENU_ItemConstruct(menuType, ctrlMenuList, "Control", 0, 0));
-
     {
-        MENU_ListInsert(ctrlMenuList, MENU_ItemConstruct(nullType, NULL, "ENB", 0, 0));
-
         MENU_ListInsert(ctrlMenuList, MENU_ItemConstruct(procType, CTRL_Start, "start", 0U,
                 menuItem_proc_runOnce));
+        MENU_ListInsert(ctrlMenuList, MENU_ItemConstruct(nullType, NULL, "ENB", 0, 0));
+
+        MENU_ListInsert(ctrlMenuList, MENU_ItemConstruct(variType, &ctrl_ImgEn[0], "img.en", 0U,
+                menuItem_data_NoSave | menuItem_data_NoLoad | menuItem_dataExt_HasMinMax));
+        MENU_ListInsert(ctrlMenuList, MENU_ItemConstruct(variType, &ctrl_EmEn[0], "em.en", 0U,
+                menuItem_data_NoSave | menuItem_data_NoLoad | menuItem_dataExt_HasMinMax));
         MENU_ListInsert(ctrlMenuList, MENU_ItemConstruct(variType, &ctrl_spdCtrlEn[0], "spd.en", 0U,
                 menuItem_data_NoSave | menuItem_data_NoLoad | menuItem_dataExt_HasMinMax));
         MENU_ListInsert(ctrlMenuList, MENU_ItemConstruct(variType, &ctrl_dirCtrlEn[0], "dir.en", 0U,
@@ -85,13 +95,31 @@ void CTRL_MenuInit(menu_list_t *menuList)
                 menuItem_data_NoSave | menuItem_data_NoLoad|menuItem_data_ROFlag));
     }
     static menu_list_t *paraMenuList =
-                MENU_ListConstruct("Parameter", 10, menuList);
+                MENU_ListConstruct("Parameter", 20, menuList);
     assert(paraMenuList);
     MENU_ListInsert(menuList, MENU_ItemConstruct(menuType, paraMenuList, "Parameter", 0, 0));
     {
         MENU_ListInsert(paraMenuList, MENU_ItemConstruct(varfType, &ctrl_dirPidOutput, "dir.out", 0U,
                 menuItem_data_NoSave | menuItem_data_NoLoad|menuItem_data_ROFlag));
         MENU_ListInsert(paraMenuList, MENU_ItemConstruct(varfType, &img_error, "img_error", 0U,
+                menuItem_data_NoSave | menuItem_data_NoLoad|menuItem_data_ROFlag));
+        MENU_ListInsert(paraMenuList, MENU_ItemConstruct(varfType, &em_error, "em_error", 0U,
+                menuItem_data_NoSave | menuItem_data_NoLoad|menuItem_data_ROFlag));
+        MENU_ListInsert(paraMenuList, MENU_ItemConstruct(varfType, &AD[0], "AD[0]", 0U,
+                menuItem_data_NoSave | menuItem_data_NoLoad|menuItem_data_ROFlag));
+        MENU_ListInsert(paraMenuList, MENU_ItemConstruct(varfType, &AD[1], "AD[1]", 0U,
+                menuItem_data_NoSave | menuItem_data_NoLoad|menuItem_data_ROFlag));
+        MENU_ListInsert(paraMenuList, MENU_ItemConstruct(varfType, &AD[2], "AD[2]", 0U,
+                menuItem_data_NoSave | menuItem_data_NoLoad|menuItem_data_ROFlag));
+        MENU_ListInsert(paraMenuList, MENU_ItemConstruct(varfType, &AD[3], "AD[3]", 0U,
+                menuItem_data_NoSave | menuItem_data_NoLoad|menuItem_data_ROFlag));
+        MENU_ListInsert(paraMenuList, MENU_ItemConstruct(varfType, &AD[4], "AD[4]", 0U,
+                menuItem_data_NoSave | menuItem_data_NoLoad|menuItem_data_ROFlag));
+        MENU_ListInsert(paraMenuList, MENU_ItemConstruct(varfType, &AD[5], "AD[5]", 0U,
+                menuItem_data_NoSave | menuItem_data_NoLoad|menuItem_data_ROFlag));
+        MENU_ListInsert(paraMenuList, MENU_ItemConstruct(varfType, &AD[6], "AD[6]", 0U,
+                menuItem_data_NoSave | menuItem_data_NoLoad|menuItem_data_ROFlag));
+        MENU_ListInsert(paraMenuList, MENU_ItemConstruct(varfType, &AD[7], "AD[7]", 0U,
                 menuItem_data_NoSave | menuItem_data_NoLoad|menuItem_data_ROFlag));
     }
 }
@@ -161,21 +189,48 @@ pidCtrl_t ctrl_dirPid =
 
 float ctrl_dirPidOutput = 0.0f; ///< 转向环输出
 
+float CTRL_GetDirError(void)
+{
+    if(1 == ctrl_ImgEn[0] && 0 == ctrl_EmEn[0])
+    {
+        return img_error;
+    }
+    else if(1 == ctrl_EmEn[0] && 0 == ctrl_ImgEn[0])
+    {
+        return em_error;
+    }
+    return 0;
+}
+
 void CTRL_DirCtrl(void *userData)
 {
     if(1 == ctrl_dirCtrlEn[0] && ctrl_startstaus)
     {
-        PIDCTRL_ErrUpdate(&ctrl_dirPid, (img_error));
+        PIDCTRL_ErrUpdate(&ctrl_dirPid, (CTRL_GetDirError()));
         ctrl_dirPidOutput = ctrl_sevromid + PIDCTRL_CalcPIDGain(&ctrl_dirPid);
     }
     else
     {
         ctrl_dirPidOutput = ctrl_sevromid;
     }
-    SCFTM_PWM_ChangeHiRes(FTM3,kFTM_Chnl_7,50U,ctrl_dirPidOutput);
+    SCFTM_PWM_ChangeHiRes(FTM3,kFTM_Chnl_7,50U,CTRL_SevroUpdate(ctrl_dirPidOutput));
 }
 
 /* *********************************************** */
+
+float CTRL_SevroUpdate(float sevro)
+{
+    if(sevro > ctrl_sevromid+0.65)
+    {
+        return ctrl_sevromid+0.65;
+    }
+    else if(sevro < ctrl_sevromid-0.65)
+    {
+        return ctrl_sevromid-0.65;
+    }
+    return sevro;
+}
+
 //速度闭环后再启用
 
 void CTRL_MotorUpdate(float motorL, float motorR)
