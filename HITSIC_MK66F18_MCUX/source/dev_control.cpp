@@ -25,6 +25,7 @@ extern float AD[ChannelTimes];  ///< 图像阈值
 extern uint32_t ema_tol;        ///< 电磁测试用参数
 extern uint32_t ema_mode;
 extern uint32_t ema_detla;
+extern bool zebra_stop;
 
 /**全局变量声明**/
 float ctrl_sevromid;                ///< 舵机中值
@@ -161,8 +162,8 @@ void CTRL_MenuInit(menu_list_t *menuList)
 /* ******************** 启动延时 ******************** */
 void CTRL_Start(void)
 {
-    /**未启动且不在调试模式时延时启动**/
-    if(ctrl_startstaus == false && 0 == ctrl_testEn[0])
+    /**未启动时延时启动**/
+    if(ctrl_startstaus == false)
     {
         DISP_SSD1306_delay_ms(1500);///< 延时
         ctrl_startstaus = !ctrl_startstaus;
@@ -221,7 +222,7 @@ void CTRL_SpdCtrl(void *userData)   ///< 速度环主函数
     //SCFTM_ClearSpeed(ENCO_R_PERIPHERAL);
     //ctrl_spdAvg = (ctrl_spdL + ctrl_spdR) / 2.0f;
     /**已启动且速度环已使能更新电机输出**/
-    if(1 == ctrl_spdCtrlEn[0] && ctrl_startstaus)
+    if((1 == ctrl_spdCtrlEn[0] && ctrl_startstaus) || (1 == ctrl_testEn[0] && !zebra_stop))
     {
         /**出赛道电机停转**/
         if(CTRL_Protect(ctrl_mode))
@@ -286,13 +287,22 @@ float CTRL_GetDirError(int ctrl_dirmode)  ///< 根据当前模式获取error
     return 0;
 }
 
+void CTRL_CheckZebra(void)
+{
+    if(zebra_stop)
+    {
+        ctrl_startstaus = false;
+    }
+}
+
 void CTRL_DirCtrl(void *userData)   ///< 方向环主函数
 {
     /**已启动且方向环已使能更新舵机输出**/
-    if(1 == ctrl_dirCtrlEn[0] && ctrl_startstaus)
+    if((1 == ctrl_dirCtrlEn[0] && ctrl_startstaus) || (1 == ctrl_testEn[0] && !zebra_stop))
     {
         CTRL_GetCtrlMode();            ///< 获取当前模式
         ctrl_mode = ctrl_modesel[0];   ///< 更新当前模式
+        CTRL_CheckZebra();
         PIDCTRL_ErrUpdate(&ctrl_dirPid[ctrl_mode], (CTRL_GetDirError(ctrl_mode)));  ///< 更新PID
         ctrl_dirPidOutput = ctrl_sevromid + PIDCTRL_CalcPIDGain(&ctrl_dirPid[ctrl_mode]);  ///< 舵机限位
     }

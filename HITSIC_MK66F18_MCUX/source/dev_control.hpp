@@ -70,6 +70,7 @@ extern int32_t ctrl_mode;
 
 int32_t CTRL_GetCtrlMode(void);
 float CTRL_GetDirError(int ctrl_dirmode);
+void CTRL_CheckZebra(void);
 void CTRL_DirCtrl(void *userData);
 float CTRL_SevroUpdate(float sevro);
 
