@@ -51,7 +51,7 @@ void fit_road();
 void check();
 int find_crossing();
 void fit_entercross();
-void fit_fourPoint(uint8_t range, uint8_t zone[], uint8_t yi[], float* k, float* b);
+void fit_fourPoint(uint8_t range,uint8_t zone[], uint8_t yi[]);
 void ols_fit(uint8_t x[], uint8_t y[], uint8_t x_hat[], uint8_t y_hat[], int n1, int n2);
 void fit_midline();
 bool zebra_Stop();

@@ -97,7 +97,7 @@ void head_clear(void)
         my_map = &IMG[i][0];
         for (int j = 45+(119-i)/2; j <= 143-(119-i)/2; j++)
         {
-            *(my_map+j) = 1;
+            *(my_map+j) = white;
         }
     }
 }

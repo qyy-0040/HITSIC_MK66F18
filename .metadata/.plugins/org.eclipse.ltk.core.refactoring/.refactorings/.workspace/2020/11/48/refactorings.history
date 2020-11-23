@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<session version="1.0">
+<refactoring comment="删除资源“HITSIC_MK66F18_MCUX/source/dev_Image.c”" deleteContents="false" description="删除资源“HITSIC_MK66F18_MCUX/source/dev_Image.c”" element1="/HITSIC_MK66F18_MCUX/source/dev_Image.c" flags="7" id="org.eclipse.ltk.core.refactoring.delete.resources" resources="1" stamp="1606119345069"/>
+</session>
