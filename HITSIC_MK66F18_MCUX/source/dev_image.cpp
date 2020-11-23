@@ -92,12 +92,12 @@ void THRE()
 void head_clear(void)
 {
     uint8_t* my_map;
-    for (int i = 119; i >= 84; i--)
+    for (int i = 119; i >= 75; i--)
     {
         my_map = &IMG[i][0];
-        for (int j = 40; j <= 135; j++)
+        for (int j = 45+(119-i)/2; j <= 143-(119-i)/2; j++)
         {
-            *(my_map+j) = 1;
+            *(my_map+j) = white;
         }
     }
 }
