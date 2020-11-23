@@ -434,10 +434,10 @@ float image_main(void)
     /*到此处为止，我们已经得到了属于赛道的结构体数组my_road[CAMERA_H]*/
     ordinary_two_line();
     //printf("\nfit_cross:\n");
-    //fit_cross();
+    fit_cross();
     //printf("\nzebra_fit\n");
-    //zebra_stop = zebra_Stop();
-    //fit_zebra();
+    zebra_stop = zebra_Stop();
+    fit_zebra();
     get_mid_line();
     /*if (zebra_stop == 1) {
         for (int i = left_line[65]; i < right_line[65]; i++) {
@@ -446,7 +446,7 @@ float image_main(void)
     }*/
     //check();一个debug的时候写着玩的程序
     //printf("\nfit_midline\n");
-    //fit_midline();
+    fit_midline();
     /*for (int i = NEAR_LINE; i >= FAR_LINE; i--) {
         if (mid_line[i] != MISS)
             IMG[i][mid_line[i]] = purple;
