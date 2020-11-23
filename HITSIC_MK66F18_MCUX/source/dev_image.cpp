@@ -570,9 +570,10 @@ bool zebra_Stop()
 void fit_zebra() {
     record_zebra();
     int j;
+    float k1, b1, k2, b2;
     if (zebra[0] != 0) {
-        fit_fourPoint(40,zebra, left_line);
-        fit_fourPoint(40,zebra, right_line);
+        fit_fourPoint(40,zebra, left_line,&k1,&b1);
+        fit_fourPoint(40,zebra, right_line,&k2,&b2);
     }
     return;
 }
@@ -716,10 +717,9 @@ void fit_midline()
 //输出：
 //备注：
 ////////////////////////////
-void fit_fourPoint(uint8_t range,uint8_t zone[],uint8_t yi[])
+void fit_fourPoint(uint8_t range,uint8_t zone[],uint8_t yi[],float* k,float* b)
 {
     int max, min;
-    float k, b;
     for (int i = 0; i < range; i++) {
         if (zone[i] != 0) max = i;
         else break;
@@ -728,13 +728,10 @@ void fit_fourPoint(uint8_t range,uint8_t zone[],uint8_t yi[])
     max = zone[0] + 5;
     if (min < 0)min = 0;
     if (max > 119)max = 119;
-    k = (float)(yi[max] - yi[min]) / (max - min);
-    b = (float)yi[max] - k * max;
-    //printf("\n k:%.2f,b:%.2f", k, b);
-    for (int i = min; i <= max; i++) {
-        if (i < 0)i++;
-        yi[i] = (int)(k * i + b);
-    }
+    *k = (float)(yi[max] - yi[min]) / (max - min);
+    *b = (float)yi[max] - (*k) * max;
+    ////printf("\n k:%.2f,b:%.2f", k, b);
+
     return;
 }
 
@@ -830,48 +827,62 @@ void fit_entercross() {
 /////////////////////////////////////////////////////////////////////////////////
 void fit_cross()
 {
-
+    float k1, k2,b1,b2;
+    int n;
     int flag = find_crossing();
     if (flag == 1) {
         if (cross[0] > 108) {
-            //printf("\nentercross\n");////////////
+            ////printf("\nentercross\n");////////////
             fit_entercross();
-
-            /*printf("\ncrossing:\n");
-            for (int i = 0; i < CAMERA_H; i++) {
-                if (cross[i] == 0) {
-                    break;
-                }
-                printf("%d\t", cross[i]);
-                if (i % 10 == 0)printf("\n");
-
-            }*/
             return;
         }
-        //printf("\nfitcross\n");////////////////
-        fit_fourPoint(NEAR_LINE,cross,left_line);
-        fit_fourPoint(NEAR_LINE,cross,right_line);
+
+        //printf("\ncrossing:\n");
+        //for (int i = 0; i < CAMERA_H; i++) {
+        //  if (cross[i] == 0) {
+        //      break;
+        //  }
+        //  //printf("%d\t", cross[i]);
+        //  if (i % 10 == 0) printf("\n");
+
+        //}
+
+    ////printf("\nfitcross\n");////////////////
+    fit_fourPoint(NEAR_LINE,cross,left_line,&k1,&b1);
+    fit_fourPoint(NEAR_LINE,cross,right_line,&k2,&b2);
+    for (int i = 0; i < NEAR_LINE; i++) {
+        if (cross[i] != 0) n = i;
+        else break;
     }
-    /*printf("\ncrossing:\n");
-    for (int i = 0; i < CAMERA_H; i++) {
-        if (cross[i] == 0) {
-            break;
+    if (k1 * k2 < 0)
+    {
+        for (int i = 0; i < n; i++) {
+            left_line[i] = (int)(k1 * cross[i] + b1);
+            right_line[i] = (int)(k2 * cross[i] + b2);
         }
-        printf("%d\t", cross[i]);
-        if (i % 10 == 0)printf("\n");
+    }
 
-    }*/
-//int flag1 = find_crossLeft();
-    //int flag2 = find_crossRight();
-    //if (flag1 == 1 && flag2 == 1) {//检测到十字路口 开始拟合赛道
-    //  ols_generateData(cross_left, left_line, ols_leftXi, ols_leftYi);
-    //  ols_generateData(cross_right, right_line, ols_rightXi, ols_rightYi);
-    //  ols_fitImg(cross_left, left_line, ols_leftXi, ols_leftYi);
-    //  ols_fitImg(cross_right, right_line, ols_rightXi, ols_rightYi);
-    //
-    //}
+        //printf("\ncrossing:\n");
+        //for (int i = 0; i < CAMERA_H; i++) {
+        //  if (cross[i] == 0) {
+        //      break;
+        //  }
+        //  //printf("%d\t", cross[i]);
+        //  if (i % 10 == 0)
+        //      printf("\n");
 
-    return;
+        //}
+        //int flag1 = find_crossLeft();
+        //int flag2 = find_crossRight();
+        //if (flag1 == 1 && flag2 == 1) {//检测到十字路口 开始拟合赛道
+        //  ols_generateData(cross_left, left_line, ols_leftXi, ols_leftYi);
+        //  ols_generateData(cross_right, right_line, ols_rightXi, ols_rightYi);
+        //  ols_fitImg(cross_left, left_line, ols_leftXi, ols_leftYi);
+        //  ols_fitImg(cross_right, right_line, ols_rightXi, ols_rightYi);
+        //
+        //}
+    }
+        return;
 }
 ///////////////////////////////////////////////////////////////////////////
 //十字路口左边界
