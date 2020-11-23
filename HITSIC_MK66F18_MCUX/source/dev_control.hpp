@@ -18,6 +18,8 @@
 #define CTRL_SPD_CTRL_MS    (5U)
 #define CTRL_DIR_CTRL_MS    (20U)
 #define CTRL_EM_CTRL_MS    (20U)
+#define CTRL_MODE_IMG    (0U)
+#define CTRL_MODE_EMA    (1U)
 
 #define CTRL_1G             (9.80f)
 //#define CTRL_ASIN(x)        (arm_arcsin_f32(x))
@@ -43,12 +45,15 @@ void CTRL_Start(void);
 
 /* ******************** 速度环 ******************** */
 extern int32_t ctrl_spdCtrlEn[3];
+extern float ctrl_motorL[2];
+extern float ctrl_motorR[2];
 extern float ctrl_spdSet;
 extern pidCtrl_t ctrl_spdPid;
 extern float ctrl_spdL, ctrl_spdR;
 extern float ctrl_spdAvg;
 extern float ctrl_spdPidOutput;
 
+bool CTRL_Protect(int32_t ctrl_mode);
 void CTRL_SpdCtrl(void *userData);
 
 /* *********************************************** */
@@ -56,10 +61,16 @@ void CTRL_SpdCtrl(void *userData);
 
 /* ******************** 转向环 ******************** */
 extern int32_t ctrl_dirCtrlEn[3];
-extern pidCtrl_t ctrl_dirPid;
+extern int32_t ctrl_modesel[3];
+extern int32_t ctrl_autoselEn[3];
+extern pidCtrl_t ctrl_dirPid[2];
 extern float ctrl_dirPidOutput;
+extern float ctrl_errtor;
+extern int32_t ctrl_mode;
 
-float CTRL_GetDirError(void);
+int32_t CTRL_GetCtrlMode(void);
+float CTRL_GetDirError(int ctrl_dirmode);
+void CTRL_CheckZebra(void);
 void CTRL_DirCtrl(void *userData);
 float CTRL_SevroUpdate(float sevro);
 

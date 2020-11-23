@@ -12,7 +12,7 @@
 #include "cm_backtrace.h"
 #include "app_menu_def.hpp"
 #include "app_menu.hpp"
-
+#include "sc_host.h"
 
 
 #define MISS 255
@@ -44,4 +44,18 @@ void my_memset(uint8_t* ptr, uint8_t num, uint8_t size);
 void Cam_Test(void);
 void Cam_Init(void);
 void CAM_ZF9V034_DmaCallback(edma_handle_t *handle, void *userData, bool transferDone, uint32_t tcds);
+
+void fit_cross();
+void fit_zebra();
+void fit_road();
+void check();
+int find_crossing();
+void fit_entercross();
+void fit_fourPoint(uint8_t range,uint8_t zone[], uint8_t yi[]);
+void ols_fit(uint8_t x[], uint8_t y[], uint8_t x_hat[], uint8_t y_hat[], int n1, int n2);
+void fit_midline();
+bool zebra_Stop();
+void find_zebraCrossing();
+void record_zebra();
+void fit_zebra();
 #endif //
