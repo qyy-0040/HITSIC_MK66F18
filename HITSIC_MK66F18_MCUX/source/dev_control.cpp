@@ -18,8 +18,6 @@ void CTRL_Init(void)
     assert(ctrl_emCtrlHandle);
     ctrl_strCtrlHandle = pitMgr_t::insert(CTRL_STR_CTRL_MS, 6U, CTRL_StrCtrl, pitMgr_t::enable);
     assert(ctrl_strCtrlHandle);
-    ctrl_spdtestCtrlHandle = pitMgr_t::insert(2500, 7U, CTRL_SpdtestCtrl, pitMgr_t::enable);
-    assert(ctrl_spdtestCtrlHandle);
 }
 
 /**外部变量引用**/
@@ -57,8 +55,6 @@ void CTRL_MenuInit(menu_list_t *menuList)
     assert(paraMenuList);
     MENU_ListInsert(menuList, MENU_ItemConstruct(menuType, settingMenuList, "Setting", 0, 0));
     {
-        /*MENU_ListInsert(settingMenuList, MENU_ItemConstruct(procType, CTRL_Start, "start/stop", 0U,
-                menuItem_proc_runOnce));*/
         MENU_ListInsert(settingMenuList, MENU_ItemConstruct(variType, &ctrl_strEn[0], "start/stop", 0U,
                 menuItem_data_NoSave | menuItem_data_NoLoad | menuItem_dataExt_HasMinMax));
         MENU_ListInsert(settingMenuList, MENU_ItemConstruct(variType, &ctrl_testEn[0], "mode.test", 0U,
@@ -77,10 +73,15 @@ void CTRL_MenuInit(menu_list_t *menuList)
     }
     MENU_ListInsert(menuList, MENU_ItemConstruct(menuType, ctrlMenuList, "Control", 0, 0));
     {
-        /*MENU_ListInsert(ctrlMenuList, MENU_ItemConstruct(varfType, &ctrl_spdSet, "spdSet", 11U,
-                menuItem_data_region)); 测试*/
-        MENU_ListInsert(ctrlMenuList, MENU_ItemConstruct(varfType, &ctrl_sevromid, "sevro.mid", 20U,
+        MENU_ListInsert(ctrlMenuList, MENU_ItemConstruct(varfType, &ctrl_spdSet, "spdSet", 27U,
                 menuItem_data_region));
+        MENU_ListInsert(ctrlMenuList, MENU_ItemConstruct(varfType, &ctrl_spdfixtimeL, "KL", 28U,
+                menuItem_data_region));
+        MENU_ListInsert(ctrlMenuList, MENU_ItemConstruct(varfType, &ctrl_spdfixtimeR, "KR", 29U,
+                menuItem_data_region));
+        MENU_ListInsert(ctrlMenuList, MENU_ItemConstruct(varfType, &ctrl_sevromid, "sevro.mid", 30U,
+                menuItem_data_region));
+
 
         MENU_ListInsert(ctrlMenuList, MENU_ItemConstruct(nullType, NULL, "DIRECTION", 0, 0));
         MENU_ListInsert(ctrlMenuList, MENU_ItemConstruct(varfType, &ctrl_dirPid[CTRL_MODE_IMG].kp, "img.kp", 21U,
@@ -124,14 +125,6 @@ void CTRL_MenuInit(menu_list_t *menuList)
         MENU_ListInsert(imageMenuList, MENU_ItemConstruct(nullType, NULL, "EMA", 0, 0));
         MENU_ListInsert(imageMenuList, MENU_ItemConstruct(variType, &ema_error, "ema.error", 0U,
                 menuItem_data_NoSave | menuItem_data_NoLoad|menuItem_data_ROFlag));
-
-        MENU_ListInsert(imageMenuList, MENU_ItemConstruct(nullType, NULL, "EMAtest", 0, 0));
-        MENU_ListInsert(imageMenuList, MENU_ItemConstruct(variType, &ema_tol, "ema_tol", 32U,
-                menuItem_data_global));
-        MENU_ListInsert(imageMenuList, MENU_ItemConstruct(variType, &ema_detla, "ema.detla", 0U,
-                menuItem_data_NoSave | menuItem_data_NoLoad|menuItem_data_ROFlag));
-        MENU_ListInsert(imageMenuList, MENU_ItemConstruct(variType, &ema_mode, "ema.mode", 0U,
-                menuItem_data_NoSave | menuItem_data_NoLoad|menuItem_data_ROFlag));
     }
 
     MENU_ListInsert(menuList, MENU_ItemConstruct(menuType, paraMenuList, "Parameter", 0, 0));
@@ -152,6 +145,8 @@ void CTRL_MenuInit(menu_list_t *menuList)
 
         MENU_ListInsert(paraMenuList, MENU_ItemConstruct(nullType, NULL, "SPEED", 0, 0));
         MENU_ListInsert(paraMenuList, MENU_ItemConstruct(varfType, &ctrl_spdSet, "spd.set", 0U,
+                menuItem_data_NoSave | menuItem_data_NoLoad));
+        MENU_ListInsert(paraMenuList, MENU_ItemConstruct(varfType, &ctrl_spdfix, "spd.fix", 0U,
                 menuItem_data_NoSave | menuItem_data_NoLoad));
         MENU_ListInsert(paraMenuList, MENU_ItemConstruct(varfType, &ctrl_spdL, "spdL.cur", 0U,
                 menuItem_data_NoSave | menuItem_data_NoLoad));
@@ -196,18 +191,6 @@ void CTRL_StrCtrl(void *userData)
         ctrl_startstaus = false;
     }
 }
-/*void CTRL_Start(void)
-{
-    if(ctrl_startstaus == false)
-    {
-        DISP_SSD1306_delay_ms(1500);///< 延时
-        ctrl_startstaus = !ctrl_startstaus;
-    }
-    else
-    {
-        ctrl_startstaus = !ctrl_startstaus;///< 启动/停止
-    }
-}*/
 
 /* *********************************************** */
 
@@ -223,20 +206,7 @@ float ctrl_spdL = 0.0f, ctrl_spdR = 0.0f;
 float ctrl_spdLerror = 0.0f, ctrl_spdRerror = 0.0f;
 float ctrl_spdLOutput = 0.0f; ///< 速度环输出
 float ctrl_spdROutput = 0.0f;
-uint32_t ctrl_testcount = 0;
-float ctrl_spdtest[2] = {1.0, 2.5};
-void CTRL_SpdtestCtrl(void *userData)
-{
-    if((ctrl_startstaus) || (1 == ctrl_testEn[0]/* && !zebra_stop*/))
-    {
-        ctrl_testcount++;
-        ctrl_spdSet = ctrl_spdtest[ctrl_testcount%2];
-    }
-    else
-    {
-        ctrl_testcount = 0;//测试用
-    }
-}
+float ctrl_spdfixtimeL = 0.0f, ctrl_spdfixtimeR = 0.0f;
 
 bool CTRL_Protect(int32_t ctrl_mode)  ///< 出赛道保护（图像部分未完成）
 {
@@ -274,8 +244,10 @@ void CTRL_SpdCtrl(void *userData)   ///< 速度环主函数
             SCFTM_ClearSpeed(ENCO_L_PERIPHERAL);
             PIDCTRL_ErrUpdate(&ctrl_spdPid[0], ctrl_spdSet - ctrl_spdL);
             ctrl_spdLOutput += PIDCTRL_DeltaPIGain(&ctrl_spdPid[0]);
+            ctrl_spdLOutput = ctrl_spdLOutput*(1-ctrl_spdfixtimeL*ctrl_spdfix);
             PIDCTRL_ErrUpdate(&ctrl_spdPid[1], ctrl_spdSet - ctrl_spdR);
             ctrl_spdROutput += PIDCTRL_DeltaPIGain(&ctrl_spdPid[1]);
+            ctrl_spdROutput = ctrl_spdROutput*(1+ctrl_spdfixtimeR*ctrl_spdfix);
         }
     }
     /**未启动时电机停转**/
@@ -297,6 +269,7 @@ pidCtrl_t ctrl_dirPid[2];
 float ctrl_dirPidOutput = 0.0f; ///< 转向环输出
 float ctrl_errtor = 0.0f;
 int32_t ctrl_mode = 0U;  ///< 目前模式
+float ctrl_spdfix = 0.0f;
 
 int32_t CTRL_GetCtrlMode(void)  ///< 获取当前模式
 {
@@ -353,6 +326,7 @@ void CTRL_DirCtrl(void *userData)   ///< 方向环主函数
         ctrl_dirPidOutput = ctrl_sevromid;
     }
     ctrl_dirPidOutput = CTRL_SevroUpdate(ctrl_dirPidOutput);  ///< 记录当前舵机输出值
+    ctrl_spdfix = CTRL_SPD_FIX(ctrl_dirPidOutput);
     SCFTM_PWM_ChangeHiRes(FTM3,kFTM_Chnl_7,50U,ctrl_dirPidOutput); ///< 舵机输出
 }
 
@@ -383,22 +357,22 @@ void CTRL_MotorUpdate(float motorL, float motorR)
         motorL -= 5;
     }*/
     /** 左电机满载 **/
-    if(motorL > 50.0f)
+    if(motorL > 99.0f)
     {
-        motorL = 50.0f;
+        motorL = 99.0f;
     }
-    if(motorL < -50.0f)
+    if(motorL < -99.0f)
     {
-        motorL = -50.0f;
+        motorL = -99.0f;
     }
     /** 右电机满载 **/
-    if(motorR > 50.0f)
+    if(motorR > 99.0f)
     {
-        motorR = 50.0f;
+        motorR = 99.0f;
     }
-    if(motorR < -50.0f)
+    if(motorR < -99.0f)
     {
-        motorR = -50.0f;
+        motorR = -99.0f;
     }
     /** 反转保护 **/
 

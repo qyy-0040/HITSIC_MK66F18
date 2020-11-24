@@ -145,15 +145,16 @@ void main(void)
     //extInt_t::insert(PORTA, 9U,Cam_Test);
     /** 初始化结束，开启总中断 */
     HAL_ExitCritical();
-    float var[3];
+    SCFTM_ClearSpeed(ENCO_R_PERIPHERAL);
+    SCFTM_ClearSpeed(ENCO_L_PERIPHERAL);
     while(true)
     {
-        var[0] = ctrl_spdSet;
-        var[1] = ctrl_spdL;
-        //var[2] = ctrl_spdLOutput;
-        var[2] = ctrl_spdR;
-        //var[4] = ctrl_spdROutput;
-        SCHOST_VarUpload(&var[0], 3);
+        /*测试用代码
+        ctrl_distanceL = ((float)SCFTM_GetSpeed(ENCO_R_PERIPHERAL));
+        ctrl_distanceR = -((float)SCFTM_GetSpeed(ENCO_L_PERIPHERAL));
+        ctrl_distanceRL = ctrl_distanceR/ctrl_distanceL;
+        */
+
         if(GPIO_PinRead(GPIOA, 9)==0 && menu_suspend_staus==false)
         {
             MENU_Suspend();

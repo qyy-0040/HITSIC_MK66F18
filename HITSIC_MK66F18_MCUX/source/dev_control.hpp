@@ -25,6 +25,7 @@
 #define CTRL_1G             (9.80f)
 //#define CTRL_ASIN(x)        (arm_arcsin_f32(x))
 #define CTRL_ASIN(x)        (asin(x))
+#define CTRL_TAN(x)        (tan(x))
 
 #define CTRL_PI             (3.1415926f)
 
@@ -32,6 +33,7 @@
 #define CTRL_RAD2DEG(x)     (x * (180.0f / CTRL_PI))
 
 #define CTRL_ENCO_SPD_COEFF (0.034778)
+#define CTRL_SPD_FIX(x)      (0.0232*x*x*x-0.0238*x*x+x*0.2615+0.0063)
 
 extern inv::mpu6050_t imu_6050;
 
@@ -41,7 +43,6 @@ void CTRL_MenuInit(menu_list_t *menuList);
 
 /* ******************** 启动延时 ******************** */
 void CTRL_StrCtrl(void *userData);
-void CTRL_Start(void);
 
 /* *********************************************** */
 
@@ -55,6 +56,8 @@ extern float ctrl_spdL, ctrl_spdR;
 extern float ctrl_spdLerror ,ctrl_spdRerror;
 extern float ctrl_spdLOutput;
 extern float ctrl_spdROutput;
+extern float ctrl_distanceRL, ctrl_distanceR, ctrl_distanceL;
+extern float ctrl_spdfixtimeL, ctrl_spdfixtimeR;
 
 void CTRL_SpdtestCtrl(void *userData);
 bool CTRL_Protect(int32_t ctrl_mode);
@@ -71,6 +74,7 @@ extern pidCtrl_t ctrl_dirPid[2];
 extern float ctrl_dirPidOutput;
 extern float ctrl_errtor;
 extern int32_t ctrl_mode;
+extern float ctrl_spdfix;
 
 int32_t CTRL_GetCtrlMode(void);
 float CTRL_GetDirError(int ctrl_dirmode);
