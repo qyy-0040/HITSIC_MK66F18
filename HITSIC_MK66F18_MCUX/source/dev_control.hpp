@@ -56,6 +56,7 @@ extern float ctrl_spdLerror ,ctrl_spdRerror;
 extern float ctrl_spdLOutput;
 extern float ctrl_spdROutput;
 
+void CTRL_SpdtestCtrl(void *userData);
 bool CTRL_Protect(int32_t ctrl_mode);
 void CTRL_SpdCtrl(void *userData);
 

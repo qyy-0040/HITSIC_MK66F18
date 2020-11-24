@@ -5,6 +5,7 @@ pitMgr_t* ctrl_spdCtrlHandle = nullptr;
 pitMgr_t* ctrl_dirCtrlHandle = nullptr;
 pitMgr_t* ctrl_emCtrlHandle = nullptr;
 pitMgr_t* ctrl_strCtrlHandle = nullptr;
+pitMgr_t* ctrl_spdtestCtrlHandle = nullptr;
 
 /**控制环初始化**/
 void CTRL_Init(void)
@@ -17,6 +18,8 @@ void CTRL_Init(void)
     assert(ctrl_emCtrlHandle);
     ctrl_strCtrlHandle = pitMgr_t::insert(CTRL_STR_CTRL_MS, 6U, CTRL_StrCtrl, pitMgr_t::enable);
     assert(ctrl_strCtrlHandle);
+    ctrl_spdtestCtrlHandle = pitMgr_t::insert(2500, 7U, CTRL_SpdtestCtrl, pitMgr_t::enable);
+    assert(ctrl_spdtestCtrlHandle);
 }
 
 /**外部变量引用**/
@@ -74,8 +77,8 @@ void CTRL_MenuInit(menu_list_t *menuList)
     }
     MENU_ListInsert(menuList, MENU_ItemConstruct(menuType, ctrlMenuList, "Control", 0, 0));
     {
-        MENU_ListInsert(ctrlMenuList, MENU_ItemConstruct(varfType, &ctrl_spdSet, "spdSet", 11U,
-                menuItem_data_region));
+        /*MENU_ListInsert(ctrlMenuList, MENU_ItemConstruct(varfType, &ctrl_spdSet, "spdSet", 11U,
+                menuItem_data_region)); 测试*/
         MENU_ListInsert(ctrlMenuList, MENU_ItemConstruct(varfType, &ctrl_sevromid, "sevro.mid", 20U,
                 menuItem_data_region));
 
@@ -178,7 +181,7 @@ void CTRL_MenuInit(menu_list_t *menuList)
 /* ******************** 启动延时 ******************** */
 void CTRL_StrCtrl(void *userData)
 {
-    if(1 == ctrl_strEn[0] && !ctrl_startstaus)
+    if(1 == ctrl_strEn[0] && ctrl_startstaus == false)
     {
         ctrl_strcountdown += 20;
         if(ctrl_strcountdown == 2000)
@@ -187,7 +190,7 @@ void CTRL_StrCtrl(void *userData)
         }
 
     }
-    else
+    if(0 == ctrl_strEn[0])
     {
         ctrl_strcountdown = 0;
         ctrl_startstaus = false;
@@ -220,6 +223,20 @@ float ctrl_spdL = 0.0f, ctrl_spdR = 0.0f;
 float ctrl_spdLerror = 0.0f, ctrl_spdRerror = 0.0f;
 float ctrl_spdLOutput = 0.0f; ///< 速度环输出
 float ctrl_spdROutput = 0.0f;
+uint32_t ctrl_testcount = 0;
+float ctrl_spdtest[2] = {1.0, 2.5};
+void CTRL_SpdtestCtrl(void *userData)
+{
+    if((ctrl_startstaus) || (1 == ctrl_testEn[0]/* && !zebra_stop*/))
+    {
+        ctrl_testcount++;
+        ctrl_spdSet = ctrl_spdtest[ctrl_testcount%2];
+    }
+    else
+    {
+        ctrl_testcount = 0;//测试用
+    }
+}
 
 bool CTRL_Protect(int32_t ctrl_mode)  ///< 出赛道保护（图像部分未完成）
 {
