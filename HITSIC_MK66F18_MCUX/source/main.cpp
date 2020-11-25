@@ -93,7 +93,6 @@ void MENU_DataSetUp(void);
 
 inv::i2cInterface_t imu_i2c(nullptr, IMU_INV_I2cRxBlocking, IMU_INV_I2cTxBlocking);
 inv::mpu6050_t imu_6050(imu_i2c);
-
 bool menu_suspend_staus = false;
 void main(void)
 {
@@ -145,8 +144,6 @@ void main(void)
     //extInt_t::insert(PORTA, 9U,Cam_Test);
     /** 初始化结束，开启总中断 */
     HAL_ExitCritical();
-    SCFTM_ClearSpeed(ENCO_R_PERIPHERAL);
-    SCFTM_ClearSpeed(ENCO_L_PERIPHERAL);
     while(true)
     {
         /*测试用代码
@@ -154,7 +151,7 @@ void main(void)
         ctrl_distanceR = -((float)SCFTM_GetSpeed(ENCO_L_PERIPHERAL));
         ctrl_distanceRL = ctrl_distanceR/ctrl_distanceL;
         */
-
+        CTRL_WLANtransport();
         if(GPIO_PinRead(GPIOA, 9)==0 && menu_suspend_staus==false)
         {
             MENU_Suspend();

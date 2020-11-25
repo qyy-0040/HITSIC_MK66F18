@@ -61,6 +61,8 @@ void CTRL_MenuInit(menu_list_t *menuList)
                 menuItem_data_NoSave | menuItem_data_NoLoad | menuItem_dataExt_HasMinMax));
         MENU_ListInsert(settingMenuList, MENU_ItemConstruct(variType, &ctrl_modesel[0], "mode.sel", 0U,
                 menuItem_data_NoSave | menuItem_data_NoLoad | menuItem_dataExt_HasMinMax));
+        MENU_ListInsert(settingMenuList, MENU_ItemConstruct(variType, &ctrl_WLANtrsEn[0], "WLAN.en", 0U,
+                menuItem_data_NoSave | menuItem_data_NoLoad | menuItem_dataExt_HasMinMax));
         /*MENU_ListInsert(ctrlMenuList, MENU_ItemConstruct(variType, &ctrl_autoselEn[0], "mode.auto", 0U,
                 menuItem_data_NoSave | menuItem_data_NoLoad | menuItem_dataExt_HasMinMax));
         MENU_ListInsert(ctrlMenuList, MENU_ItemConstruct(varfType, &ctrl_errtor, "errtor", 11U,
@@ -98,17 +100,17 @@ void CTRL_MenuInit(menu_list_t *menuList)
                 menuItem_data_region));
 
         MENU_ListInsert(ctrlMenuList, MENU_ItemConstruct(nullType, NULL, "PID.SPD", 0, 0));
-        MENU_ListInsert(ctrlMenuList, MENU_ItemConstruct(varfType, &ctrl_spdPid[0].kp, "spdL.kp", 12U,
+        MENU_ListInsert(ctrlMenuList, MENU_ItemConstruct(varfType, &ctrl_spdLPid.kp, "spdL.kp", 12U,
                 menuItem_data_region));
-        MENU_ListInsert(ctrlMenuList, MENU_ItemConstruct(varfType, &ctrl_spdPid[0].ki, "spdL.ki", 13U,
+        MENU_ListInsert(ctrlMenuList, MENU_ItemConstruct(varfType, &ctrl_spdLPid.ki, "spdL.ki", 13U,
                 menuItem_data_region));
-        MENU_ListInsert(ctrlMenuList, MENU_ItemConstruct(varfType, &ctrl_spdPid[0].kd, "spdL.kd", 14U,
+        MENU_ListInsert(ctrlMenuList, MENU_ItemConstruct(varfType, &ctrl_spdLPid.kd, "spdL.kd", 14U,
                 menuItem_data_region));
-        MENU_ListInsert(ctrlMenuList, MENU_ItemConstruct(varfType, &ctrl_spdPid[1].kp, "spdR.kp", 15U,
+        MENU_ListInsert(ctrlMenuList, MENU_ItemConstruct(varfType, &ctrl_spdRPid.kp, "spdR.kp", 15U,
                 menuItem_data_region));
-        MENU_ListInsert(ctrlMenuList, MENU_ItemConstruct(varfType, &ctrl_spdPid[1].ki, "spdR.ki", 16U,
+        MENU_ListInsert(ctrlMenuList, MENU_ItemConstruct(varfType, &ctrl_spdRPid.ki, "spdR.ki", 16U,
                 menuItem_data_region));
-        MENU_ListInsert(ctrlMenuList, MENU_ItemConstruct(varfType, &ctrl_spdPid[1].kd, "spdR.kd", 17U,
+        MENU_ListInsert(ctrlMenuList, MENU_ItemConstruct(varfType, &ctrl_spdRPid.kd, "spdR.kd", 17U,
                 menuItem_data_region));
     }
 
@@ -435,4 +437,19 @@ void CTRL_MotorUpdate(float motorL, float motorR)
 float PIDCTRL_DeltaPIGain(pidCtrl_t *_pid)
 {
     return (_pid->errCurr-_pid->errPrev)*_pid->kp + _pid->errCurr*_pid->ki;
+}
+
+float ctrl_WLANvar[4];
+int32_t ctrl_WLANtrsEn[3] = {0, 0, 1};
+
+void CTRL_WLANtransport(void)
+{
+    ctrl_WLANvar[0] = ctrl_spdgoalL;
+    ctrl_WLANvar[1] = ctrl_spdL;
+    ctrl_WLANvar[2] = ctrl_spdgoalR;
+    ctrl_WLANvar[3] = ctrl_spdR;
+    if(1 == ctrl_WLANtrsEn[0])
+    {
+        SCHOST_VarUpload(ctrl_WLANvar, 4);
+    }
 }

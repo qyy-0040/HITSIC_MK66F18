@@ -90,5 +90,9 @@ float CTRL_SpdFix(float x);
 void CTRL_MotorUpdate(float motorL, float motorR);
 float PIDCTRL_DeltaPIGain(pidCtrl_t *_pid);
 
+extern float ctrl_WLANvar[4];
+extern int32_t ctrl_WLANtrsEn[3];
+
+void CTRL_WLANtransport(void);
 
 #endif /* DEV_CONTROL_HPP_ */
