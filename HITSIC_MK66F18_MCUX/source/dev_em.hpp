@@ -1,10 +1,3 @@
-/*
- * dev_em.hpp
- *
- *  Created on: 2020年11月19日
- *      Author: fanyi
- */
-
 #ifndef DEV_EM_HPP_
 #define DEV_EM_HPP_
 

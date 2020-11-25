@@ -1,9 +1,3 @@
-/*
- * dev_Image.cpp
- *
- *  Created on: 2020年11月10日
- *      Author: fanyi
- */
 /**TEAM 15th Dev**/
 #include "dev_Image.h"
 #include "lib_pidctrl.h"
@@ -57,6 +51,12 @@ uint8_t top_road;//赛道最高处所在行数
 uint32_t threshold;//阈值
 uint32_t preview ;
 
+//新加变量
+uint8_t zebra_crossing = 0;//它应该是个全局变量
+bool zebra_stop=false;//它也应该是个全局变量 它等于1 就停
+uint8_t zebra[40];
+uint8_t cross[CAMERA_H];        //十字路口所在行
+uint8_t fit_flag[CAMERA_H];     //该行中线是否需要拟合
 
 ////////////////////////////////////////////
 //功能：二值化
@@ -92,10 +92,10 @@ void THRE()
 void head_clear(void)
 {
     uint8_t* my_map;
-    for (int i = 119; i >= 84; i--)
+    for (int i = 119; i >= 75; i--)
     {
         my_map = &IMG[i][0];
-        for (int j = 40; j <= 135; j++)
+        for (int j = 45+(119-i)/2; j <= 143-(119-i)/2; j++)
         {
             *(my_map+j) = 1;
         }
@@ -426,7 +426,6 @@ void get_mid_line(void)
 ///////////////////////////////////////////
 float image_main(void)
 {
-
     THRE();
     head_clear();
     search_white_range();
@@ -434,7 +433,31 @@ float image_main(void)
     find_road();
     /*到此处为止，我们已经得到了属于赛道的结构体数组my_road[CAMERA_H]*/
     ordinary_two_line();
+    //printf("\nfit_cross:\n");
+    fit_cross();
+    //printf("\nzebra_fit\n");
+    zebra_stop = zebra_Stop();
+    fit_zebra();
     get_mid_line();
+    /*if (zebra_stop == 1) {
+        for (int i = left_line[65]; i < right_line[65]; i++) {
+            IMG[65][i] = green;
+        }
+    }*/
+    //check();一个debug的时候写着玩的程序
+    //printf("\nfit_midline\n");
+    fit_midline();
+    /*for (int i = NEAR_LINE; i >= FAR_LINE; i--) {
+        if (mid_line[i] != MISS)
+            IMG[i][mid_line[i]] = purple;
+        /*IMG[i][left_line[i]] = blue;
+        IMG[i][right_line[i]] = red;
+    }*/
+    /*for (int i = 0; i <NEAR_LINE; i++) {
+        if (cross[i] == 0)  break;
+        IMG[cross[i]][left_line[cross[i]]] = green;
+        IMG[cross[i]][right_line[cross[i]]] = green;
+    }*/
     float Servo_err = (float)(MIDLINE - mid_line[preview]);
     return Servo_err/10;
 }
@@ -493,3 +516,500 @@ void CAM_ZF9V034_DmaCallback(edma_handle_t *handle, void *userData, bool transfe
         DMADVP_TransferSubmitEmptyBuffer(DMADVP0, dmadvpHandle, fullBuffer);
     }
 }
+
+////////////////////////////////////////////
+//功能：斑马线检测
+//输入：
+//输出 uint8_t zebra_crossing 0表示没看到斑马线/1表示看到斑马线啦
+//备注：当zebra_crossing=1时不再进行检测
+////////////////////////////////////////////
+void find_zebraCrossing()
+{
+    if (right_line[65] - left_line[65] < 10) {
+        zebra_crossing = 1;//给控制传回的参数的准备工作
+    }
+}
+/////////////////////////
+/// 功能：记录斑马线位置
+/// //////////////////////
+void record_zebra() {
+    for (int i = 0; i < 40; i++) {
+        zebra[i] = 0;
+    }
+    int j = 0;
+    for (int i = NEAR_LINE; i >= 3; i--) {//记录斑马线位置
+        if (right_line[i] - left_line[i] < 10) {
+            zebra[j] = i;
+            j++;
+        }
+    }
+}
+////////////////////////////////////////////
+//功能：向主程序返回斑马线的参数
+//输入：find_zebraCrossing的返回值
+//输出：
+////////////////////////////////////////////
+bool zebra_Stop()
+{
+    if (zebra_crossing == 1) {
+        return false;
+    }
+    else {//zebra_crossing为0
+        find_zebraCrossing();//运行寻找斑马线的代码
+        if (zebra_crossing == 1) {//忽然找到
+            return true;
+        }
+
+    }
+}
+///////////////////////////////////////////////////
+//功能：斑马线部分赛道拟合
+//输入：
+//输出：
+///////////////////////////////////////////////////
+void fit_zebra() {
+    record_zebra();
+    int j;
+    float k1, b1, k2, b2;
+    if (zebra[0] != 0) {
+        fit_fourPoint(40,zebra, left_line,&k1,&b1);
+        fit_fourPoint(40,zebra, right_line,&k2,&b2);
+    }
+    return;
+}
+
+////////////////////////////////////////////
+//功能：出赛道识别
+//输入：
+//输出：uint8_t 1:出赛道 0：还在赛道里面
+////////////////////////////////////////////
+//uint8_t road_ifOut()
+//{
+//
+//}
+//////////////////////////////////////////
+//功能： 最小二乘法的代码实现 呜呜呜它成功了我太棒了噫好我中了qwq
+//输入：x y
+//输出：
+//备注：
+/////////////////////////////////////////
+void ols_fit(uint8_t x[],uint8_t y[],uint8_t x_hat[],uint8_t y_hat[],int n1,int n2)
+{
+    float k, b;
+
+    int sx=0, sy=0, sxy=0, sxx=0;
+    for (int i = 0; i < n1; i++) {
+        sx += x[i];
+        sy += y[i];
+        sxy += x[i] * y[i];
+        sxx += x[i] * x[i];
+    }
+    k = (float)(n1 * sxy - sy * sx) / (n1 * sxx - sx * sx);
+    b = (float)(sxx * sy - sx*sxy) / (n1 * sxx - sx * sx);
+    //printf("\n k:%.2f b:%.2f\n", k, b);
+    for (int i = 0; i < n2; i++) {
+        y_hat[i] = (int)(k * x_hat[i] + b);
+    }
+    return;
+}
+
+void check()
+{
+    printf("\nleft_line:\n");
+    for (int i = FAR_LINE; i <= NEAR_LINE; i++) {
+        printf(" %d\t",  left_line[i]);
+        if (i % 10 == 0)printf("\n");
+    }
+    printf("\nright_line:\n");
+    for (int i = FAR_LINE; i <= NEAR_LINE; i++) {
+        printf(" %d\t",  right_line[i]);
+        if (i % 10 == 0)printf("\n");
+    }
+    printf("\nwidth:\n");
+    for (int i = FAR_LINE; i <= NEAR_LINE; i++) {
+        printf("%d\t",right_line[i]-left_line[i]);
+        if (i % 10 == 0)printf("\n");
+    }
+    printf("\ncrossing\n");
+    for (int i = 0; i <CAMERA_H; i++) {
+        if (cross[i] == 0) {
+            break;
+        }
+        printf("%d\t", cross[i]);
+        if (i % 10 == 0)printf("\n");
+
+    }
+    printf("\nzebra:\n");
+    for (int i = 0; i < 40; i++) {
+        if (zebra[i] == 0) {
+            break;
+        }
+        printf("%d\t", zebra[i]);
+        if (i % 10 == 0)printf("\n");
+    }
+    return;
+
+}
+///////////////////////////////////////
+//功能：判断前瞻点是否进入十字
+//
+
+//int enter_crossing()
+//{
+//  if (right_line[preview] - left_line[preview] > 170) {
+//      return 1;
+//  }
+//  else return 0;
+//}
+
+///////////////////////////////////
+//功能：识别十字路口（可以区分近处十字和远处十字）
+//输入：
+//输出：
+//备注：（又是一个需要填的坑）
+//////////////////////////////////
+//int find_crossing()
+//{
+//  int flag = enter_crossing();
+//  if (flag == 1)
+//  {
+//
+//  }
+//      //前瞻点在十字之内
+//      //下边界=1 从下向上补
+//      //上边界=1&&下边界=0 从上往下补
+//  else //不运行程序
+//  return 0;
+//}
+
+///////////////////////////////////////
+//功能：使中线平滑
+//输入：
+//输出：
+//备注：最小二乘法
+///////////////////////////////////////
+void fit_midline()
+{
+    uint8_t zone[20],y[20],x_hat[20],y_hat[20];
+    for (uint8_t i = 0; i < 20; i++) {
+        zone[i] = preview-10+i;
+        y[i] = mid_line[zone[i]];
+        x_hat[i] = zone[i];
+    }
+    ols_fit(zone, y, x_hat, y_hat,20,20);
+    /*printf("yi:\n");
+    for (uint8_t i = 0; i < 20; i++) {
+        printf("%d\t", y[i]);
+    }
+    printf("\ny_hat\n");
+    for (uint8_t i = 0; i < 20; i++) {
+        printf("%d\t", y_hat[i]);
+    }*/
+    for (uint8_t i = 0; i < 20; i++) {
+        mid_line[x_hat[i]] = y_hat[i];
+    }
+    return;
+}
+
+//我还是想试一试快乐四点法//
+////////////////////////////
+//输入：yi(为了不用给左右边界各写一个函数)
+//输出：
+//备注：
+////////////////////////////
+void fit_fourPoint(uint8_t range,uint8_t zone[],uint8_t yi[],float* k,float* b)
+{
+    int max, min;
+    for (int i = 0; i < range; i++) {
+        if (zone[i] != 0) max = i;
+        else break;
+    }
+    min = zone[max] - 8;
+    max = zone[0] + 5;
+    if (min < 0)min = 0;
+    if (max > 119)max = 119;
+    *k = (float)(yi[max] - yi[min]) / (max - min);
+    *b = (float)yi[max] - (*k) * max;
+    ////printf("\n k:%.2f,b:%.2f", k, b);
+
+    return;
+}
+
+///////////////////////////////////////////////////////////////////////////
+//功能：通过寻找赛道宽度突变点识别十字路口
+//输入：
+//输出：int 是否检测到十字路口
+///////////////////////////////////////////////////////////////////////////
+int find_crossing()
+{
+    for (int i = 0; i < CAMERA_H; i++) {
+        cross[i] = 0;
+    }
+    uint8_t j = 0;
+    int flag = 0;
+    for (int i = NEAR_LINE; i >= FAR_LINE; i--) {
+        if ((right_line[i] - left_line[i]) > (i + 60)) {//下边界 这里已经是十字路口了
+            cross[j] = i;
+            j++;
+            flag = 1;
+        }
+        if (((right_line[i + 1] - left_line[i + 1]) > (i + 61)) && ((right_line[i] - left_line[i]) < (i + 60))) {//上边界 最后一个数也是十字路口的位置
+            break;
+        }
+    }
+    if (flag == 1)return 1;
+    if (flag == 0)return 0;
+}
+/////////////////////////////////////
+//功能：进入十字路口下边界不可靠时的赛道拟合
+//输入：
+//输出：
+/////////////////////////////////////
+void fit_entercross() {
+    //这里可以用最小二乘法取十字路口以上20个点做拟合
+    uint8_t x[20], yl[20],yr[20], x_hat[CAMERA_H], yl_hat[CAMERA_H],yr_hat[CAMERA_H];
+    int crossup;
+
+    for (int i = 0; i < CAMERA_H; i++) {
+        if (cross[i] != 0) { crossup = cross[i]; }
+    }
+    for (int i = 0; i < 20; i++) {
+        x[i] = crossup - i - 1;
+        yl[i] = left_line[x[i]];
+        yr[i] = right_line[x[i]];
+    }
+    int n2 = 118 - crossup;
+    for (int i = 0; i < n2; i++) {
+        x_hat[i] = crossup + i;
+    }
+    ols_fit(x, yl, x_hat, yl_hat,20,n2);
+    for (int i = 0; i < n2; i++) {
+        left_line[x_hat[i]] = yl_hat[i];
+    }
+    ols_fit(x, yr, x_hat, yr_hat,20,n2);
+    for (int i = 0; i < n2; i++) {
+        right_line[x_hat[i]] = yr_hat[i];
+    }
+
+    //
+    //printf("\ncrossup:%d\n", crossup);//////
+    //printf("\nx:\n");
+    //for (int i = 0; i < 20; i++) {
+    //  printf("%d\t", x[i]);
+    //}
+    //printf("\nyl:\n");
+    //for (int i = 0; i < 20; i++) {
+    //  printf("%d\t", yl[i]);
+    //}
+    //printf("\nyr:\n");
+    //for (int i = 0; i < 20; i++) {
+    //  printf("%d\t", yr[i]);
+    //}
+    //printf("\nx_hat:\n");
+    //for (int i = 0; i < n2; i++) {
+    //  printf("%d\t", x_hat[i]);
+    //}
+    //printf("\nyl_hat:\n");
+    //for (int i = 0; i < n2; i++) {
+    //  printf("%d\t", yl_hat[i]);
+    //}
+    //printf("\nyr_hat:\n");
+    //for (int i = 0; i < n2; i++) {
+    //  printf("%d\t", yr_hat[i]);
+    //}
+    return;
+}
+/////////////////////////////////////////////////////////////////////////////////
+//功能：检测到十字路口开始拟合赛道
+//输入：
+//输出：
+//
+/////////////////////////////////////////////////////////////////////////////////
+void fit_cross()
+{
+    float k1, k2,b1,b2;
+    int n;
+    int flag = find_crossing();
+    if (flag == 1) {
+        if (cross[0] > 108) {
+            ////printf("\nentercross\n");////////////
+            fit_entercross();
+            return;
+        }
+
+        //printf("\ncrossing:\n");
+        //for (int i = 0; i < CAMERA_H; i++) {
+        //  if (cross[i] == 0) {
+        //      break;
+        //  }
+        //  //printf("%d\t", cross[i]);
+        //  if (i % 10 == 0) printf("\n");
+
+        //}
+
+    ////printf("\nfitcross\n");////////////////
+    fit_fourPoint(NEAR_LINE,cross,left_line,&k1,&b1);
+    fit_fourPoint(NEAR_LINE,cross,right_line,&k2,&b2);
+    for (int i = 0; i < NEAR_LINE; i++) {
+        if (cross[i] != 0) n = i;
+        else break;
+    }
+    if (k1 * k2 < 0)
+    {
+        for (int i = 0; i < n; i++) {
+            left_line[i] = (int)(k1 * cross[i] + b1);
+            right_line[i] = (int)(k2 * cross[i] + b2);
+        }
+    }
+
+        //printf("\ncrossing:\n");
+        //for (int i = 0; i < CAMERA_H; i++) {
+        //  if (cross[i] == 0) {
+        //      break;
+        //  }
+        //  //printf("%d\t", cross[i]);
+        //  if (i % 10 == 0)
+        //      printf("\n");
+
+        //}
+        //int flag1 = find_crossLeft();
+        //int flag2 = find_crossRight();
+        //if (flag1 == 1 && flag2 == 1) {//检测到十字路口 开始拟合赛道
+        //  ols_generateData(cross_left, left_line, ols_leftXi, ols_leftYi);
+        //  ols_generateData(cross_right, right_line, ols_rightXi, ols_rightYi);
+        //  ols_fitImg(cross_left, left_line, ols_leftXi, ols_leftYi);
+        //  ols_fitImg(cross_right, right_line, ols_rightXi, ols_rightYi);
+        //
+        //}
+    }
+        return;
+}
+///////////////////////////////////////////////////////////////////////////
+//十字路口左边界
+//输入
+//输出
+//
+///////////////////////////////////////////////////////////////////////////
+//int find_crossLeft() {
+//  int schange = 0;//是否存在突变
+//  for (int i = 3; i < CAMERA_H; i++) {
+//
+//      //对于左边界来说 数值突然变大 十字路口下端 突然变小 十字路口上端
+//      if ((left_line[i] - left_line[i - 1] > 3) && (left_line[i] - left_line[i - 2] > 3) && (left_line[i] - left_line[i - 3] > 3))
+//      {
+//          schange = 1;
+//          cross_left[1] = i;
+//      }
+//      if ((left_line[i] - left_line[i - 1] < -3) && (left_line[i] - left_line[i - 2] < -3) && (left_line[i] - left_line[i - 3] < -3))
+//      {
+//          schange = 1;
+//          cross_left[0] = i;
+//      }
+//  }
+//  //如果下边界比上边界小，令下边界为119
+//  if (cross_left[1] < cross_left[0]) cross_left[1] = 119;
+//  if (schange == 1)       return 1;//存在突变
+//  if (schange == 0)   return 0;   //nope
+//  /// //
+//
+//
+//}
+
+
+///////////////////////////////////////////////////////////////////////////
+//十字路口右边界
+//输入
+//输出
+//
+///////////////////////////////////////////////////////////////////////////
+//int find_crossRight() {
+//  int schange = 0;//是否存在突变
+//  for (int i = 3; i < CAMERA_H; i++) {
+//
+//      //对于右边界来说 数值突然变大 十字路口上端 突然变小 十字路口下端
+//      if (right_line[i] - right_line[i - 1] > 5 && right_line[i] - right_line[i - 2] > 5 && right_line[i] - right_line[i - 3] > 5)
+//      {
+//          schange = 1;
+//          cross_right[0] = i;
+//      }
+//      if (right_line[i] - right_line[i - 1] < -5 && right_line[i] - right_line[i - 2] < -5 && right_line[i] - right_line[i - 3] < -5)
+//      {
+//          schange = 1;
+//          cross_right[1] = i;
+//      }
+//  }
+//  //如果下边界比上边界小，令下边界为119
+//  if (cross_right[1] < cross_right[0]) cross_right[1] = 119;
+//  if (schange == 1)       return 1;//存在突变
+//  if (schange == 0)   return 0;   //nope
+//}
+
+///////////////////////////////////////////////////////
+//生成最小二乘法的参考数组xi yi 以及需要拟合的数组cross[CAMERA_H]
+//输入 (为了左右两边不用写两个函数，range为cross_left[2]/cross_right[2]；side 为 left_line/right_side
+//输出
+//
+///////////////////////////////////////////////////////
+//void ols_generateData(uint8_t range[], uint8_t side[], uint8_t xi[], uint8_t yi[])
+//{
+//  //为了之后方便判断数组长度，先将xi yi 全部初始化为-1
+//  for (int i = 0; i < CAMERA_H; i++) {
+//      xi[i] = -1;
+//  }
+//  for (int i = 0; i < CAMERA_H; i++) {
+//      yi[i] = -1;
+//  }
+//  int j = 0;//xi的第j个元素
+//  //初始化xi xi的存放的数值是行数
+//  for (int i = range[0] - 20; i < range[0] - 5; i++) {
+//      if (i >= 0) {
+//          xi[j] = i;
+//          j++;
+//      }
+//  }
+//  for (int i = range[1] + 7; i < range[i] + 30; i++)
+//  {
+//      if (i <= 119) {
+//          xi[j] = i;
+//          j++;
+//      }
+//  }
+//  //初始化yi yi是xi对应位置当中那一行边界值所在列数
+//  for (int i = 0; xi[i] >= 0 && i <= 119; i++) {
+//      yi[i] = side[xi[i]];
+//  }
+//  return;
+//}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//最小二乘法的函数实现
+//输入：已知的 xi(ols_leftXi,ols_rightXi)  ;yi(ols_leftYi,ols_rightYi),
+//      range 即cross_left[2]/cross_right[2],    line 即 left_line/right_line
+//输出：
+//
+////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//void ols_fitImg(uint8_t range[], uint8_t side[], uint8_t xi[], uint8_t yi[])
+//{
+//  int midvar1 = 0;
+//  int midvar2 = 0;//两个没有感情的中间变量
+//  float k;
+//  //k
+//  for (int i = 0; xi[i] != -1 && i <= 119; i++) { //求出曲线斜率
+//      midvar1 += 2 * xi[i] * yi[i];
+//      midvar2 += xi[i] * xi[i];
+//  }
+//  k = (float)midvar1 / (float)midvar2;
+//  //renew side
+//  for (int i = range[0]; i < range[1]; i++) { //拟合边界值
+//      side[i] = (int)(k * i);
+//  }
+//  return;
+//}
+
+//void get_wide() {
+//  for (int i = 0; i < CAMERA_H; i++) {
+//      wide[i] = i+ 60;
+//  }
+//  return;
+//}
+

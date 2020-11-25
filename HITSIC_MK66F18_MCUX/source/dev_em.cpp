@@ -1,15 +1,12 @@
-/*
- * dev_em.cpp
- *
- *  Created on: 2020年11月19日
- *      Author: fanyi
- */
 #include "dev_em.hpp"
 uint32_t LV_Temp[ChannelTimes][SampleTimes];
 const uint32_t channels[ChannelTimes] = {16, 23, 17, 18, 10, 11, 12, 13};
 float LV[ChannelTimes];
 float AD[ChannelTimes];
-float em_error;
+uint32_t ema_tol = 0;
+uint32_t ema_mode;
+uint32_t ema_detla;
+float ema_error;
 
 void EM_LVSample(void)                             // ad采集函数
 {
@@ -86,5 +83,16 @@ void EM_ErrorUpdate(void)
 {
     EM_LVSample();
     EM_LVGetVal();
-    em_error = (float)((AD[7]-AD[1])/(AD[1]*AD[7]));
+    ema_detla = abs(AD[7]-AD[1]);
+    /*if(ema_detla > ema_tol)  ///< 弯道用差比和
+    {
+        ema_error = (float)((AD[7]-AD[1])/(AD[1]+AD[7]));
+        ema_mode = 1;
+    }
+    else                     ///< 直道用差比积
+    {
+        ema_error = (float)((AD[7]-AD[1])/(AD[1]*AD[7]));
+        ema_mode = 2;
+    }*/
+    ema_error = (float)((AD[7]-AD[1])/(AD[1]*AD[7]));
 }
