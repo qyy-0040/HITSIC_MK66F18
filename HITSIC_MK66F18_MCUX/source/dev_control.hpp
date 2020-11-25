@@ -33,7 +33,6 @@
 #define CTRL_RAD2DEG(x)     (x * (180.0f / CTRL_PI))
 
 #define CTRL_ENCO_SPD_COEFF (0.034778)
-#define CTRL_SPD_FIX(x)      (0.0232*x*x*x-0.0238*x*x+x*0.2615+0.0063)
 
 extern inv::mpu6050_t imu_6050;
 
@@ -51,7 +50,8 @@ extern int32_t ctrl_spdCtrlEn[3];
 extern float ctrl_motorL[2];
 extern float ctrl_motorR[2];
 extern float ctrl_spdSet;
-extern pidCtrl_t ctrl_spdPid[2];
+extern pidCtrl_t ctrl_spdLPid;
+extern pidCtrl_t ctrl_spdRPid;
 extern float ctrl_spdL, ctrl_spdR;
 extern float ctrl_spdLerror ,ctrl_spdRerror;
 extern float ctrl_spdLOutput;
@@ -70,17 +70,18 @@ void CTRL_SpdCtrl(void *userData);
 extern int32_t ctrl_dirCtrlEn[3];
 extern int32_t ctrl_modesel[3];
 extern int32_t ctrl_autoselEn[3];
-extern pidCtrl_t ctrl_dirPid[2];
+
 extern float ctrl_dirPidOutput;
 extern float ctrl_errtor;
 extern int32_t ctrl_mode;
 extern float ctrl_spdfix;
-
+extern pidCtrl_t ctrl_dirPid[2];
 int32_t CTRL_GetCtrlMode(void);
 float CTRL_GetDirError(int ctrl_dirmode);
 void CTRL_CheckZebra(void);
 void CTRL_DirCtrl(void *userData);
 float CTRL_SevroUpdate(float sevro);
+float CTRL_SpdFix(float x);
 
 /* *********************************************** */
 
@@ -89,5 +90,9 @@ float CTRL_SevroUpdate(float sevro);
 void CTRL_MotorUpdate(float motorL, float motorR);
 float PIDCTRL_DeltaPIGain(pidCtrl_t *_pid);
 
+extern float ctrl_WLANvar[4];
+extern int32_t ctrl_WLANtrsEn[3];
+
+void CTRL_WLANtransport(void);
 
 #endif /* DEV_CONTROL_HPP_ */
